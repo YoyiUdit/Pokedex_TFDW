@@ -1,0 +1,102 @@
+/* Estilo base para las cartas */
+.card {
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra sutil */
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* Transición suave para hover */
+  overflow: hidden; /* Evitar que los elementos se desborden */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+  height: 320px;
+}
+
+/* Hover para cartas */
+.card:hover {
+  transform: scale(1.05); /* Agrandar un poco la carta */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); /* Sombra más prominente */
+}
+
+/* Fondo de la carta con gradiente basado en el tipo */
+.card[data-type="single"] {
+  background: #A8B820; /* Color único para un solo tipo, por ejemplo 'Bicho' */
+}
+
+.card[data-type="double"] {
+  background: linear-gradient(135deg, #A8B820, #F08030); /* Gradiente para dos tipos */
+  background-size: 200% 200%;
+  animation: gradientAnimation 3s ease infinite;
+}
+
+/* Animación del gradiente */
+@keyframes gradientAnimation {
+  0% {
+      background-position: 200% 0%;
+  }
+  50% {
+      background-position: 0% 100%;
+  }
+  100% {
+      background-position: 200% 0%;
+  }
+}
+
+/* Estilo para las imágenes de Pokémon */
+.card img {
+  border-radius: 50%; /* Imagen redonda */
+  width: 120px; /* Control de tamaño de la imagen */
+  height: 120px;
+  object-fit: cover; /* Asegura que la imagen cubra el círculo sin distorsionarse */
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Sombra alrededor de la imagen */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Centrar la imagen */
+  z-index: 1; /* Asegura que la imagen esté sobre el fondo */
+}
+
+/* Círculo blanco detrás de la imagen */
+.card .circle-background {
+  background-color: white;
+  border-radius: 50%;
+  width: 140px;
+  height: 140px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Centrar el círculo */
+  z-index: 0; /* Asegura que el círculo esté detrás de la imagen */
+}
+
+/* Mejorar el título */
+.card-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+/* Estilo para los badges */
+.badge {
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-weight: 600;
+}
+
+/* Estilo para las etiquetas de 'Forma alternativa' */
+.card .badge.bg-warning {
+  background-color: #f0ad4e; /* Color más suave */
+}
+
+/* Colores de fondo para cada tipo de Pokémon (para el caso de un solo tipo) */
+.card[data-type="bug"] {
+  background-color: #A8B820;
+}
+.card[data-type="fire"] {
+  background-color: #F08030;
+}
+.card[data-type="water"] {
+  background-color: #6890F0;
+}
+/* Puedes agregar más tipos según sea necesario */

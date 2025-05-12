@@ -1,13 +1,15 @@
 $(document).ready(function () {
     const pokemonContainer = $('#pokemonContainer');
+    const prevButton = $('#prev-button'); // Botón de anterior
+    const nextButton = $('#next-button'); // Botón de siguiente
     let allPokemonList = [];
-    let displayedPokemonList = [];
+    let filteredList = [];
     let currentPage = 1;
-    const pokemonPerPage = 18; // Mostrar 18 Pokémon por página
+    const itemsPerPage = 12;
 
     // Rango de Pokémon por generación
     const generationRanges = {
-        0: { start: 1, end: 1025},   //Todos
+        0: { start: 1, end: 1025},   // Todos
         1: { start: 1, end: 151 },   // Kanto
         2: { start: 152, end: 251 }, // Johto
         3: { start: 252, end: 386 }, // Hoenn
@@ -54,193 +56,142 @@ $(document).ready(function () {
                 name: data.name.charAt(0).toUpperCase() + data.name.slice(1),
                 types: data.types.map(t => t.type.name),
                 image: data.sprites.front_default || "placeholder.png",
-                isAltForm: !data.is_default
+                isAltForm: data.forms && data.forms.length > 1 // Verificar si tiene formas alternativas
             };
         }).catch(() => null); // Por si algún dato falla
     }
-    
-    
 
-    // Renderizar las cartas de Pokémon
+    // Filtrar Pokémon con todos los filtros aplicados
+    function applyFilters() {
+        filteredList = allPokemonList;
+
+        // Filtro por tipo
+        const selectedType = $('#filter-type').val();
+        if (selectedType) {
+            filteredList = filteredList.filter(p => p.types.includes(selectedType));
+        }
+
+        // Filtro por generación
+        const selectedGeneration = $('#filter-generation').val();
+        if (selectedGeneration !== '0') {
+            const { start, end } = generationRanges[selectedGeneration];
+            filteredList = filteredList.filter(p => p.id >= start && p.id <= end);
+        }
+
+        // Filtro por formas alternativas
+        const selectedForma = $('#filter-forma').val();
+        if (selectedForma === "alternativa") {
+            filteredList = filteredList.filter(p => p.isAltForm);
+        }
+
+        // Filtro por búsqueda de nombre
+        const query = $('#search-input').val().toLowerCase();
+        if (query) {
+            filteredList = filteredList.filter(p => p.name.toLowerCase().includes(query));
+        }
+
+        // Ordenar por el valor seleccionado en el filtro de orden
+        const sortOption = $('#sort-options').val();
+        if (sortOption === "name") {
+            filteredList.sort((a, b) => a.name.localeCompare(b.name)); // Orden alfabético
+        } else if (sortOption === "number") {
+            filteredList.sort((a, b) => a.id - b.id); // Orden por número
+        }
+
+        renderCards(filteredList); // Mostrar las cartas filtradas
+    }
+
+    // Renderizar las cartas de Pokémon con paginación
     function renderCards(pokemonList) {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedList = pokemonList.slice(startIndex, endIndex);
+
         pokemonContainer.empty(); // Limpiar el contenedor de tarjetas
-    
-        pokemonList.forEach(pokemon => {
+
+        paginatedList.forEach(pokemon => {
             const type = pokemon.types[0];
             const bgColor = typeColors[type] || '#FFFFFF';
             const textColor = getTextColor(bgColor);
-            const translatedTypes = pokemon.types.map(t => typeTranslation[t] || t).join(', ');
-    
-            // Detectar si es una forma alternativa y etiquetarla
-            let extraInfo = `National Dex: ${pokemon.id}`;
-            if (pokemon.isAltForm) {
-                const nameLower = pokemon.name.toLowerCase();
-                if (nameLower.includes('alola')) {
-                    extraInfo = "Forma Regional: Alola";
-                } else if (nameLower.includes('galar')) {
-                    extraInfo = "Forma Regional: Galar";
-                } else if (nameLower.includes('hisui')) {
-                    extraInfo = "Forma Regional: Hisui";
-                } else if (nameLower.includes('paldea')) {
-                    extraInfo = "Forma Regional: Paldea";
-                } else if (nameLower.includes('mega')) {
-                    extraInfo = "Mega Evolución";
-                } else if (nameLower.includes('gmax')) {
-                    extraInfo = "Forma Gigamax";
-                } else {
-                    extraInfo = "Forma Alternativa";
-                }
-            }
-    
+            const translatedTypes = pokemon.types.map(t => typeTranslation[t] || t);
+
+            const infoLabel = pokemon.isAltForm
+                ? `<span class="position-absolute top-0 start-0 m-2 badge bg-warning text-dark">Forma alternativa</span>`
+                : `<span class="position-absolute top-0 start-0 m-2 badge bg-light text-dark">#${pokemon.id}</span>`;
+
+            const typeBadges = translatedTypes.map((typeName, index) => {
+                const typeKey = pokemon.types[index];
+                const badgeColor = typeColors[typeKey] || '#AAA';
+                const badgeTextColor = getTextColor(badgeColor);
+                return `<span class="badge me-1" style="background-color: ${badgeColor}; color: ${badgeTextColor}; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 0.75rem;">${typeName}</span>`;
+            }).join('');
+
             const card = `
-                <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-4">
-                    <div class="card text-center shadow-sm" style="background-color: ${bgColor}; color: ${textColor};">
-                        <img src="${pokemon.image}" class="card-img-top" alt="${pokemon.name}">
-                        <div class="card-body">
-                            <h5 class="card-title">${pokemon.name}</h5>
-                            <p class="card-text">${extraInfo}</p>
-                            <p class="card-text"><strong>Tipo:</strong> ${translatedTypes}</p>
-                        </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-4 d-flex align-items-stretch">
+                <div class="card shadow-sm w-100 position-relative d-flex flex-column justify-content-between text-center"
+                    style="background-color: ${bgColor}; color: ${textColor}; height: 320px; padding: 12px;">
+                    ${infoLabel}
+                    <div class="d-flex justify-content-center align-items-center flex-grow-1" style="height: 140px;">
+                        <img src="${pokemon.image}" alt="${pokemon.name}" style="max-height: 120px; width: auto;">
+                    </div>
+                    <div>
+                        <h5 class="card-title mt-2">${pokemon.name}</h5>
+                        <div class="mt-2">${typeBadges}</div>
                     </div>
                 </div>
+            </div>
             `;
+
             pokemonContainer.append(card);
         });
-    }
-    
 
-    // Paginación de los Pokémon
-    function paginatePokemon(pokemonList, page) {
-        const startIndex = (page - 1) * pokemonPerPage;
-        const endIndex = startIndex + pokemonPerPage;
-        return pokemonList.slice(startIndex, endIndex);
+        // Actualizar la visibilidad de las flechas
+        prevButton.prop('disabled', currentPage === 1);
+        nextButton.prop('disabled', currentPage * itemsPerPage >= pokemonList.length);
     }
 
-    // Renderizar los controles de paginación
-    function renderPagination(totalPokemon) {
-        const totalPages = Math.ceil(totalPokemon / pokemonPerPage);
-        const paginationContainer = $('#paginationContainer');
-        paginationContainer.empty();
-
-    // Botón anterior
-    const prevButton = `<button class="btn btn-secondary me-2" id="prevPage" ${currentPage === 1 ? 'disabled' : ''}>
-        <i class="bi bi-chevron-left"></i> Anterior
-    </button>`;
-    paginationContainer.append(prevButton);
-
-    // Botones de páginas
-    for (let i = 1; i <= totalPages; i++) {
-        const pageButton = `<button class="btn btn-secondary me-2" data-page="${i}">${i}</button>`;
-        paginationContainer.append(pageButton);
-    }
-
-    // Botón siguiente
-    const nextButton = `<button class="btn btn-secondary ms-2" id="nextPage" ${currentPage === totalPages ? 'disabled' : ''}>
-        Siguiente <i class="bi bi-chevron-right"></i>
-    </button>`;
-    paginationContainer.append(nextButton);
-
-    // Manejar la paginación
-    $('#paginationContainer button').on('click', function () {
-        const page = $(this).data('page');
-        if (page) {
-        currentPage = page;
-        } else if ($(this).attr('id') === 'prevPage' && currentPage > 1) {
-        currentPage--;
-        } else if ($(this).attr('id') === 'nextPage' && currentPage < totalPages) {
-        currentPage++;
-        }
-            displayedPokemonList = paginatePokemon(allPokemonList, currentPage);
-            renderCards(displayedPokemonList);
-            renderPagination(allPokemonList.length); // Volver a renderizar los botones de paginación
-        });
-    }
-
-    // Cargar los Pokémon de una generación específica
+    // Función para cargar Pokémon de una generación
     function loadGeneration(genNumber) {
-        currentGeneration = genNumber;
         const { start, end } = generationRanges[genNumber];
-    
+
         $.get('https://pokeapi.co/api/v2/pokemon?limit=100000').then(response => {
             const urls = response.results.map(p => p.url);
-    
+
             const promises = urls.map(url => loadPokemonData(url));
-    
+
             Promise.all(promises).then(pokemonData => {
                 // Si estás en "Todos", incluyes todo
-                if (genNumber === 0) {
-                    allPokemonList = pokemonData;
-                } else {
-                    // Solo incluir los Pokémon cuyo ID está en el rango, o que su forma es alternativa de uno en ese rango
-                    allPokemonList = pokemonData.filter(p =>
-                        (p.id >= start && p.id <= end) ||
-                        (p.isAltForm && p.id >= start && p.id <= end)
-                    );
-                }
-    
-                currentPage = 1;
-                displayedPokemonList = paginatePokemon(allPokemonList, currentPage);
-                renderCards(displayedPokemonList);
-                renderPagination(allPokemonList.length);
+                allPokemonList = pokemonData;
+                applyFilters(); // Aplica los filtros después de cargar los Pokémon
             });
         });
     }
-    
-    
 
-    // Filtrar Pokémon por tipo
-    $('#filter-type').on('change', function () {
-        const selectedType = $(this).val();
-        const filtered = selectedType ? allPokemonList.filter(p => p.types.includes(selectedType)) : allPokemonList;
-        displayedPokemonList = paginatePokemon(filtered, currentPage);
-        renderCards(displayedPokemonList);
-    });
+    // Inicializar filtros y cargar Pokémon
+    $('#filter-type').change(applyFilters);
+    $('#filter-generation').change(applyFilters);
+    $('#filter-forma').change(applyFilters);
+    $('#search-input').on('input', applyFilters);
 
-    // Filtrar Pokémon por generación
-    $('#filter-generation').on('change', function () {
-        const selectedGeneration = $(this).val();
-        loadGeneration(Number(selectedGeneration)); // Cargar la generación seleccionada
-    });
+    // Ordenar por nombre o número
+    $('#sort-options').change(applyFilters);
 
-    // Ordenar Pokémon por nombre
-    $('#sort-name').on('click', function () {
-        const sorted = [...allPokemonList].sort((a, b) => a.name.localeCompare(b.name));
-        displayedPokemonList = paginatePokemon(sorted, currentPage);
-        renderCards(displayedPokemonList);
-    });
-    
-
-    // Ordenar Pokémon por número
-    $('#sort-number').on('click', function () {
-        const sorted = [...allPokemonList].sort((a, b) => a.id - b.id);
-        displayedPokemonList = paginatePokemon(sorted, currentPage);
-        renderCards(displayedPokemonList);
-    });
-    
-
-    // Búsqueda por nombre
-    $('#search-input').on('input', function () {
-        const query = $(this).val().toLowerCase();
-        const filtered = allPokemonList.filter(p => p.name.toLowerCase().includes(query));
-        displayedPokemonList = paginatePokemon(filtered, currentPage);
-        renderCards(displayedPokemonList);
-    });
-
-    //Busqueda por Formas
-    $('#filter-forma').on('change', function () {
-        const selectedForma = $(this).val();
-        let filtered = allPokemonList;
-    
-        if (selectedForma === "alternativa") {
-            filtered = allPokemonList.filter(p => p.isAltForm);
+    // Navegar a la página anterior
+    prevButton.click(function () {
+        if (currentPage > 1) {
+            currentPage--;
+            applyFilters();
         }
-    
-        displayedPokemonList = paginatePokemon(filtered, currentPage);
-        renderCards(displayedPokemonList);
-        renderPagination(filtered.length);
     });
-    
 
-    // Cargar la primera generación por defecto
-    loadGeneration(1);
+    // Navegar a la página siguiente
+    nextButton.click(function () {
+        if (currentPage * itemsPerPage < filteredList.length) {
+            currentPage++;
+            applyFilters();
+        }
+    });
+
+    // Cargar todos los Pokémon al principio (esto puedes cambiarlo según la generación)
+    loadGeneration(0);  // Aquí se carga la "generación 0" que incluye todos los Pokémon
 });
