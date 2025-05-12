@@ -78,6 +78,15 @@ $(document).ready(function () {
 
         renderCards(filteredList);
     }
+
+
+    function adjustColor(hex, factor) {
+        const r = Math.min(255, Math.max(0, parseInt(hex.substr(1,2), 16) + factor));
+        const g = Math.min(255, Math.max(0, parseInt(hex.substr(3,2), 16) + factor));
+        const b = Math.min(255, Math.max(0, parseInt(hex.substr(5,2), 16) + factor));
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+    
     function renderCards(pokemonList) {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -88,9 +97,14 @@ $(document).ready(function () {
         paginatedList.forEach(pokemon => {
             const type1 = pokemon.types[0];
             const type2 = pokemon.types[1] || null;
-            const bg1 = typeColors[type1] || '#FFF';
-            const bg2 = type2 ? (typeColors[type2] || '#FFF') : null;
-            const textColor = getTextColor(bg1);
+            const base1 = typeColors[type1] || '#FFF';
+            const base2 = type2 ? (typeColors[type2] || '#FFF') : null;
+            const textColor = getTextColor(base1);
+
+            const gradientStyle = base2
+                ? `background: linear-gradient(135deg, ${adjustColor(base1, -30)}, ${base2}, ${adjustColor(base2, 40)});`
+                : `background: linear-gradient(135deg, ${adjustColor(base1, -30)}, ${base1}, ${adjustColor(base1, 40)});`;
+
     
             const translatedTypes = pokemon.types.map(t => typeTranslation[t] || t);
             const typeBadges = translatedTypes.map((typeName, index) => {
@@ -103,9 +117,7 @@ $(document).ready(function () {
                 ? `<span class="position-absolute top-0 start-0 m-2 badge bg-warning text-dark">Forma alternativa</span>`
                 : `<span class="position-absolute top-0 start-0 m-2 badge bg-light text-dark">#${pokemon.id}</span>`;
     
-            const gradientStyle = bg2
-                ? `background: linear-gradient(135deg, ${bg1}, ${bg2});`
-                : `background: ${bg1};`;
+
     
             const card = `
             <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-4 d-flex align-items-stretch">
